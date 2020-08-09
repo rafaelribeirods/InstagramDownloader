@@ -1,4 +1,7 @@
+import 'dart:convert';
+
 import 'DownloaderResponse.dart';
+import 'Globals.dart';
 import 'Media.dart';
 import 'package:dio/dio.dart';
 
@@ -10,25 +13,24 @@ class Downloader {
     this._http = new Dio();
   }
 
-  Future<DownloaderResponse> getMediaList(String url) async {
-
-    if(!this.validUrl(url)) {
-      return DownloaderResponse(true, 'Invalid URL');
-    }
+  Future<DownloaderResponse> getMedia(String url) async {
 
     Response response;
     try {
       response = await this._http.get(url);
     }
     on DioError catch(e) {
-      return new DownloaderResponse(true, "Invalid URL");
+      return new DownloaderResponse(true, Globals.INVALID_URL_ERROR);
     }
 
-    //return this.parseResponse(response.data);
+    DownloaderResponse post = this.getPost(response.data);
+    if(!post.hasError()) {
+      return post;
+    }
 
   }
 
-  /*DownloaderResponse parseResponse(String response) {
+  DownloaderResponse getPost(String response) {
 
     RegExp regex = new RegExp('"display_url":"(.*?)"|"video_url":"(.*?)"');
     List<int> thumbnail_indexes = new List();
@@ -51,22 +53,31 @@ class Downloader {
         }
         String file_name = this._getFileName(url);
         if(file_name == null) {
-          return new DownloaderResponse(true, 'Couldn\'t get file name and format');
+          return new DownloaderResponse(true, Globals.FILE_NAME_PARSE_ERROR);
         }
         media.add(new Media(file_name, url, type, thumbnail));
       }
       media = this._filter(media, thumbnail_indexes);
       return new DownloaderResponse(false, media);
     }
-    return new DownloaderResponse(true, "Couldn't get media");
+    return new DownloaderResponse(true, Globals.RESPONSE_PARSE_ERROR);
 
-  }*/
+  }
 
-  /*Map<String, dynamic> _getItemMap(RegExpMatch match) {
+  Map<String, dynamic> _getItemMap(RegExpMatch match) {
     return json.decode('{' + match.group(0).toString() + '}');
-  }*/
+  }
 
-  /*List<Media> _filter(List<Media> media, List<int> thumbnail_indexes) {
+  String _getFileName(String url) {
+    RegExp regex = new RegExp(r'\/[a-zA-Z0-9_]+\.[a-zA-Z0-9]{3}\?');
+    if(regex.hasMatch(url)) {
+      String match = regex.stringMatch(url);
+      return match.substring(1, match.length - 1);
+    }
+    return null;
+  }
+
+  List<Media> _filter(List<Media> media, List<int> thumbnail_indexes) {
 
     List<Media> filtered_list = new List();
     for(Media item in media) {
@@ -77,16 +88,16 @@ class Downloader {
 
     return filtered_list;
 
-  }*/
+  }
 
-  /*bool isListed(List<Media> filtered_list, String file_name) {
+  bool isListed(List<Media> filtered_list, String file_name) {
     for(Media media in filtered_list) {
       if(media.getFileName() == file_name) {
         return true;
       }
     }
     return false;
-  }*/
+  }
 
   /*Future<String> getPath() async {
     PermissionStatus storagePermissionStatus = await Permission.storage.status;
@@ -129,15 +140,6 @@ class Downloader {
 
     return new DownloaderResponse(false, "Download completed!");
 
-  }*/
-
-  /*String _getFileName(String url) {
-    RegExp regex = new RegExp(r'\/[a-zA-Z0-9_]+\.[a-zA-Z0-9]{3}\?');
-    if(regex.hasMatch(url)) {
-      String match = regex.stringMatch(url);
-      return match.substring(1, match.length - 1);
-    }
-    return null;
   }*/
 
   bool validUrl(String url) {

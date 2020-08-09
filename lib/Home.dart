@@ -1,6 +1,10 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
+import 'package:instagram_downloader/src/Globals.dart';
 import 'src/Downloader.dart';
+import 'src/DownloaderResponse.dart';
+import 'src/Media.dart';
 
 class Home extends StatefulWidget {
   @override
@@ -12,14 +16,17 @@ class _HomeState extends State<Home> {
   Downloader _downloader = new Downloader();
   TextEditingController _urlController = new TextEditingController();
 
-  final _INVALID_URL_ERROR = 'Invalid URL';
+  List<Media> _media;
 
+  bool _loading;
   String _inputError;
 
   @override
   void initState() {
     super.initState();
+    _media = new List();
     _inputError = "";
+    _loading = false;
   }
 
   Widget _buildTitle() {
@@ -73,7 +80,7 @@ class _HomeState extends State<Home> {
                     setState(() { _inputError = ""; });
                   }
                   else {
-                    setState(() { _inputError = this._INVALID_URL_ERROR; });
+                    setState(() { _inputError = Globals.INVALID_URL_ERROR; });
                   }
                 }
                 else {
@@ -95,7 +102,7 @@ class _HomeState extends State<Home> {
               setState(() { _inputError = ""; });
             }
             else {
-              setState(() { _inputError = this._INVALID_URL_ERROR; });
+              setState(() { _inputError = Globals.INVALID_URL_ERROR; });
             }
           },
         ),
@@ -104,7 +111,7 @@ class _HomeState extends State<Home> {
 
   }
 
-  Widget _buildInputErrorAndDownloadButton() {
+  Widget _buildInputErrorAndDownloadButton(BuildContext context) {
 
     return Padding(
       padding: const EdgeInsets.only(top: 16, left: 16, right: 16),
@@ -113,20 +120,32 @@ class _HomeState extends State<Home> {
           Expanded(
             child: this._buildInputError(),
           ),
-          this._buildInputDownloadButton()
+          this._buildInputDownloadButton(context)
         ],
       )
     );
 
   }
 
-  Widget _buildInputDownloadButton() {
+  Widget _buildInputDownloadButton(BuildContext context) {
 
     bool allowClick = this._urlController.text != "" && this._inputError == "";
 
     return GestureDetector(
-      onTap: allowClick ? () {
-        print("Clicou no download do input");
+      onTap: allowClick ? () async {
+        setState(() { _loading = true; });
+        DownloaderResponse response = await this._downloader.getMedia(this._urlController.text);
+        setState(() { _loading = false; });
+        if(response.hasError()) {
+          Scaffold.of(context).hideCurrentSnackBar();
+          Scaffold.of(context).showSnackBar(SnackBar(
+            content: Text(response.getContent()),
+            backgroundColor: Colors.red,
+          ));
+        }
+        else {
+          setState(() { this._media = response.getContent(); });
+        }
       } : null,
       child: Text(
         "DOWNLOAD",
@@ -154,7 +173,7 @@ class _HomeState extends State<Home> {
 
   }
 
-  Widget _buildAppBar() {
+  Widget _buildAppBar(BuildContext context) {
 
     return AppBar(
       elevation: 1,
@@ -163,12 +182,14 @@ class _HomeState extends State<Home> {
       bottom: PreferredSize(
         child: Padding(
           padding: EdgeInsets.all(16),
-          child: Column(
-            children: <Widget>[
-              this._buildTitle(),
-              this._buildInput(),
-              this._buildInputErrorAndDownloadButton()
-            ],
+          child: Builder(
+            builder: (context) => Column(
+              children: <Widget>[
+                this._buildTitle(),
+                this._buildInput(),
+                this._buildInputErrorAndDownloadButton(context)
+              ],
+            ),
           ),
         ),
         preferredSize: Size.fromHeight(170),
@@ -177,11 +198,158 @@ class _HomeState extends State<Home> {
 
   }
 
+  Widget _buildLoading() {
+
+    return Center(
+      child: CircularProgressIndicator(),
+    );
+
+  }
+
+  Widget _buildGrid() {
+
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: this._buildList(),
+        ),
+        Row(
+          children: <Widget>[
+            this._media.length > 1 ? this._buildDownloadAllButton() : Container()
+          ],
+        )
+      ],
+    );
+
+  }
+
+  Widget _buildDownloadAllButton() {
+
+    return Expanded(
+      child: FlatButton.icon(
+        shape: RoundedRectangleBorder(
+          side: BorderSide(
+            color: Colors.blue,
+            width: 1,
+            style: BorderStyle.solid
+          )
+        ),
+        icon: Icon(Icons.arrow_downward),
+        label: Text("Download All"),
+        color: Colors.blue,
+        textColor: Colors.white,
+        padding: EdgeInsets.all(15),
+        splashColor: Colors.blueAccent,
+        onPressed: () {
+          /*...*/
+        },
+      ),
+    );
+
+  }
+
+  Widget _buildList() {
+
+    return CustomScrollView(
+      primary: false,
+      slivers: <Widget>[
+        SliverPadding(
+          padding: const EdgeInsets.all(16),
+          sliver: SliverGrid.count(
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
+            crossAxisCount: 2,
+            children: this._buildItems()
+          ),
+        ),
+      ],
+    );
+
+  }
+
+  List<Widget> _buildItems() {
+
+    List<Widget> items = new List();
+
+    /*for(Media item in this._media) {
+      items.add(Container(
+        child: Image.network(
+          item.getThumbnail(),
+          fit: BoxFit.cover,
+        )
+      ));
+    }*/
+
+    for(Media item in this._media) {
+      items.add(GestureDetector(
+        onTap: () {
+          print("Baixando mídia");
+        },
+        child: Container(
+          decoration: BoxDecoration(
+            image: DecorationImage(
+              image: NetworkImage(item.getThumbnail()),
+              fit: BoxFit.cover
+            )
+          ),
+          child: Column(
+            children: <Widget>[
+              Row(
+                children: <Widget>[
+                  Expanded(
+                    child: Align(
+                      alignment: Alignment.centerLeft,
+                      child: Container(
+                        decoration: BoxDecoration(
+                          borderRadius: BorderRadius.only(bottomRight: Radius.circular(5)),
+                          color: Colors.grey[100]
+                        ),
+                        child: Padding(
+                          padding: EdgeInsets.fromLTRB(5, 6, 5, 7),
+                          child: Text(
+                            item.getType().toUpperCase(),
+                            style: TextStyle(
+                                fontWeight: FontWeight.bold
+                            ),
+                          ),
+                        ),
+                      )
+                    ),
+                  ),
+                  GestureDetector(
+                    onTap: () {
+                      this._media.remove(item);
+                      setState(() {});
+                    },
+                    child: Container(
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.only(bottomLeft: Radius.circular(5)),
+                        color: Colors.grey[100]
+                      ),
+                      child: Icon(
+                        Icons.close,
+                        size: 29
+                      ),
+                    ),
+                  )
+                ],
+              ),
+            ],
+          ),
+        ),
+      ));
+    }
+
+    return items;
+
+  }
+
   @override
   Widget build(BuildContext context) {
 
     return Scaffold(
-      appBar: this._buildAppBar(),
+      appBar: this._buildAppBar(context),
+      body: this._loading ? this._buildLoading() : (this._media.isEmpty ? Container() : this._buildGrid()),
       backgroundColor: Colors.grey[100],
     );
 
