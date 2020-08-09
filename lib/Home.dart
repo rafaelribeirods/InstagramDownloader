@@ -206,16 +206,16 @@ class _HomeState extends State<Home> {
 
   }
 
-  Widget _buildGrid() {
+  Widget _buildGrid(BuildContext context) {
 
     return Column(
       children: <Widget>[
         Expanded(
-          child: this._buildList(),
+          child: this._buildList(context),
         ),
         Row(
           children: <Widget>[
-            this._media.length > 1 ? this._buildDownloadAllButton() : Container()
+            this._media.length > 1 ? this._buildDownloadAllButton(context) : Container()
           ],
         )
       ],
@@ -223,7 +223,7 @@ class _HomeState extends State<Home> {
 
   }
 
-  Widget _buildDownloadAllButton() {
+  Widget _buildDownloadAllButton(BuildContext context) {
 
     return Expanded(
       child: FlatButton.icon(
@@ -240,15 +240,22 @@ class _HomeState extends State<Home> {
         textColor: Colors.white,
         padding: EdgeInsets.all(15),
         splashColor: Colors.blueAccent,
-        onPressed: () {
-          /*...*/
+        onPressed: () async {
+          setState(() { _loading = true; });
+          DownloaderResponse response = await this._downloader.downloadAll(this._media);
+          setState(() { _loading = false; });
+          Scaffold.of(context).hideCurrentSnackBar();
+          Scaffold.of(context).showSnackBar(SnackBar(
+            content: Text(response.getContent()),
+            backgroundColor: response.hasError() ? Colors.red : Colors.blue,
+          ));
         },
       ),
     );
 
   }
 
-  Widget _buildList() {
+  Widget _buildList(BuildContext context) {
 
     return CustomScrollView(
       primary: false,
@@ -259,7 +266,7 @@ class _HomeState extends State<Home> {
             crossAxisSpacing: 10,
             mainAxisSpacing: 10,
             crossAxisCount: 2,
-            children: this._buildItems()
+            children: this._buildItems(context)
           ),
         ),
       ],
@@ -267,23 +274,21 @@ class _HomeState extends State<Home> {
 
   }
 
-  List<Widget> _buildItems() {
+  List<Widget> _buildItems(context) {
 
     List<Widget> items = new List();
 
-    /*for(Media item in this._media) {
-      items.add(Container(
-        child: Image.network(
-          item.getThumbnail(),
-          fit: BoxFit.cover,
-        )
-      ));
-    }*/
-
     for(Media item in this._media) {
       items.add(GestureDetector(
-        onTap: () {
-          print("Baixando mídia");
+        onTap: () async {
+          setState(() { _loading = true; });
+          DownloaderResponse response = await this._downloader.download(item.getFileName(), item.getUrl());
+          setState(() { _loading = false; });
+          Scaffold.of(context).hideCurrentSnackBar();
+          Scaffold.of(context).showSnackBar(SnackBar(
+            content: Text(response.getContent()),
+            backgroundColor: response.hasError() ? Colors.red : Colors.blue,
+          ));
         },
         child: Container(
           decoration: BoxDecoration(
@@ -349,7 +354,9 @@ class _HomeState extends State<Home> {
 
     return Scaffold(
       appBar: this._buildAppBar(context),
-      body: this._loading ? this._buildLoading() : (this._media.isEmpty ? Container() : this._buildGrid()),
+      body: Builder(
+        builder: (context) => this._loading ? this._buildLoading() : (this._media.isEmpty ? Container() : this._buildGrid(context)),
+      ),
       backgroundColor: Colors.grey[100],
     );
 

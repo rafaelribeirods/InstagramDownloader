@@ -1,13 +1,16 @@
 import 'dart:convert';
-
+import 'package:path_provider/path_provider.dart';
+import 'package:permission_handler/permission_handler.dart';
 import 'DownloaderResponse.dart';
 import 'Globals.dart';
 import 'Media.dart';
 import 'package:dio/dio.dart';
+import 'NotificationController.dart';
 
 class Downloader {
 
   Dio _http;
+  NotificationController notificationController = new NotificationController();
 
   Downloader() {
     this._http = new Dio();
@@ -23,14 +26,14 @@ class Downloader {
       return new DownloaderResponse(true, Globals.INVALID_URL_ERROR);
     }
 
-    DownloaderResponse post = this.getPost(response.data);
-    if(!post.hasError()) {
-      return post;
-    }
+    DownloaderResponse post = this._getPost(response.data);
+    return post;
+
+    //return this._getStories(response.data);
 
   }
 
-  DownloaderResponse getPost(String response) {
+  DownloaderResponse _getPost(String response) {
 
     RegExp regex = new RegExp('"display_url":"(.*?)"|"video_url":"(.*?)"');
     List<int> thumbnail_indexes = new List();
@@ -63,6 +66,57 @@ class Downloader {
     return new DownloaderResponse(true, Globals.RESPONSE_PARSE_ERROR);
 
   }
+
+  /*Future<DownloaderResponse> _getStories(String response) async {
+
+    DownloaderResponse user_id_response = this._getUserId(response);
+    if(user_id_response.hasError()) {
+      return user_id_response;
+    }
+
+    String url = "https://www.instagram.com/graphql/query/?query_hash=de8017ee0a7c9c45ec4260733d81ea31&variables=%7B%22reel_ids%22%3A%5B%22" + user_id_response.getContent() + "%22%5D%2C%22tag_names%22%3A%5B%5D%2C%22location_ids%22%3A%5B%5D%2C%22highlight_reel_ids%22%3A%5B%5D%2C%22precomposed_overlay%22%3Afalse%2C%22show_story_viewer_list%22%3Atrue%2C%22story_viewer_fetch_count%22%3A50%2C%22story_viewer_cursor%22%3A%22%22%7D";
+    Response stories;
+    try {
+      stories = await this._http.get(url);
+    }
+    on DioError catch(e) {
+      return new DownloaderResponse(true, Globals.RESPONSE_PARSE_ERROR);
+    }
+
+    Map<String, dynamic> response_object = stories.data;
+    String status = response_object['status'] ?? null;
+    if(status == null || status == 'fail') {
+      return new DownloaderResponse(true, Globals.RESPONSE_PARSE_ERROR);
+    }
+
+    print("REQUEST: " + url);
+    //print("RESPONSE: " + response_object['data']['reels_media'][0].toString());
+    print(json.encode(stories.data));
+
+  }*/
+
+  /*DownloaderResponse _getUserId(String response) {
+
+    RegExp regex1 = new RegExp(r'{"StoriesPage":.+}}]}');
+
+    if(!regex1.hasMatch(response) ) {
+      return new DownloaderResponse(true, Globals.RESPONSE_PARSE_ERROR);
+    }
+
+    String match;
+    String user_id;
+    Map<String, dynamic> object;
+    if(regex1.hasMatch(response)) {
+      match = regex1.stringMatch(response);
+      object = json.decode(match);
+      user_id = object['StoriesPage'][0]['user']['id'] ?? null;
+    }
+
+    if(user_id == null) {
+      return new DownloaderResponse(true, Globals.RESPONSE_PARSE_ERROR);
+    }
+    return new DownloaderResponse(false, user_id);
+  }*/
 
   Map<String, dynamic> _getItemMap(RegExpMatch match) {
     return json.decode('{' + match.group(0).toString() + '}');
@@ -99,7 +153,7 @@ class Downloader {
     return false;
   }
 
-  /*Future<String> getPath() async {
+  Future<String> getPath() async {
     PermissionStatus storagePermissionStatus = await Permission.storage.status;
 
     if(storagePermissionStatus.isPermanentlyDenied) {
@@ -113,12 +167,12 @@ class Downloader {
       return this.getPath();
     }
 
-  }*/
+  }
 
-  /*Future<DownloaderResponse> downloadAll(List<Media> media, DownloadController downloadController) async {
+  Future<DownloaderResponse> downloadAll(List<Media> media) async {
 
     for(Media item in media) {
-      DownloaderResponse response = await download(item.getFileName(), item.getUrl(), downloadController);
+      DownloaderResponse response = await download(item.getFileName(), item.getUrl());
       if(response.hasError()) {
         return response;
       }
@@ -126,21 +180,18 @@ class Downloader {
 
     return new DownloaderResponse(false, "All downloads completed");
 
-  }*/
+  }
 
-  /*Future<DownloaderResponse> download(String file_name, String url, DownloadController downloadController) async {
-    print("DOWNLOADING " + file_name);
+  Future<DownloaderResponse> download(String file_name, String url) async {
+
     String path = await this.getPath();
-    this._http.download(url, path + '/' + file_name, onReceiveProgress: (received, total) {
-      downloadController.setProgress((received / total * 100));
-      downloadController.notifyListeners();
-    });
+    this._http.download(url, path + '/' + file_name);
 
     notificationController.show(path + '/' + file_name);
 
     return new DownloaderResponse(false, "Download completed!");
 
-  }*/
+  }
 
   bool validUrl(String url) {
 

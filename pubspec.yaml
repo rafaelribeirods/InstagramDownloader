@@ -21,6 +21,10 @@ environment:
   sdk: ">=2.7.0 <3.0.0"
 
 dependencies:
+  flutter_local_notifications: ^1.4.4+2
+  open_file: ^3.0.1
+  path_provider: ^1.6.11
+  permission_handler: ^5.0.1+1
   dio: ^3.0.9
   flutter:
     sdk: flutter
