@@ -21,6 +21,7 @@ environment:
   sdk: ">=2.7.0 <3.0.0"
 
 dependencies:
+  receive_sharing_intent: ^1.4.0+2
   flutter_local_notifications: ^1.4.4+2
   open_file: ^3.0.1
   path_provider: ^1.6.11

@@ -185,7 +185,7 @@ class Downloader {
   Future<DownloaderResponse> download(String file_name, String url) async {
 
     String path = await this.getPath();
-    this._http.download(url, path + '/' + file_name);
+    await this._http.download(url, path + '/' + file_name);
 
     notificationController.show(path + '/' + file_name);
 

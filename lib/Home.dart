@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:instagram_downloader/src/Globals.dart';
+import 'package:receive_sharing_intent/receive_sharing_intent.dart';
 import 'src/Downloader.dart';
 import 'src/DownloaderResponse.dart';
 import 'src/Media.dart';
@@ -21,12 +22,33 @@ class _HomeState extends State<Home> {
   bool _loading;
   String _inputError;
 
+
   @override
   void initState() {
+
     super.initState();
+
     _media = new List();
     _inputError = "";
     _loading = false;
+
+    ReceiveSharingIntent.getInitialText().then((String value) async {
+      setState(() { _urlController.text = value; });
+      setState(() { _loading = true; });
+      DownloaderResponse response = await this._downloader.getMedia(this._urlController.text);
+      setState(() { _loading = false; });
+      if(response.hasError()) {
+        Scaffold.of(context).hideCurrentSnackBar();
+        Scaffold.of(context).showSnackBar(SnackBar(
+          content: Text(response.getContent()),
+          backgroundColor: Colors.red,
+        ));
+      }
+      else {
+        setState(() { this._media = response.getContent(); });
+      }
+    });
+
   }
 
   Widget _buildTitle() {
